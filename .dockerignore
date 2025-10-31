@@ -1,0 +1,19 @@
+# Reduce Docker build context and avoid copying host artifacts
+.git
+.gitignore
+**/.DS_Store
+**/Thumbs.db
+
+# Node modules (reinstalled inside images)
+node_modules
+frontend/node_modules
+backend/node_modules
+
+# Frontend local build output (built inside Docker during build stage)
+frontend/build
+
+# Logs and temp files
+*.log
+backend/laundry_log.jsonl
+**/.vscode
+**/.idea

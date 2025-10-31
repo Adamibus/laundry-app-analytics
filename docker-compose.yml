@@ -1,0 +1,18 @@
+version: "3.3"
+services:
+  app:
+    build: .
+    container_name: laundry-app
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - EXTERNAL_HEALTHCHECK=true
+    restart: unless-stopped
+    healthcheck:
+      test: >-
+        sh -lc 'if [ "$$EXTERNAL_HEALTHCHECK" = "false" ]; then exit 0; else node -e "require(\'http\').get(\'http://localhost:5000/health/external\', r => process.exit(r.statusCode===200?0:1)).on(\'error\', () => process.exit(1));"; fi'
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      # start_period may not be supported by older compose versions

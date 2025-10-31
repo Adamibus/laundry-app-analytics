@@ -1,0 +1,46 @@
+name: Build and smoke-test Docker image
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build --no-cache -t laundry-app-ci .
+
+      - name: Run container
+        run: |
+          docker run -d -p 5000:5000 --name laundry-app-ci laundry-app-ci
+
+      - name: Wait for app to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5000 >/dev/null; then
+              echo "App is up"; exit 0; fi; sleep 2; done
+          echo "App did not start in time"; docker logs laundry-app-ci; exit 1
+
+      - name: Fetch root page
+        run: |
+          set -e
+          curl -fsS http://localhost:5000 | head -n 20
+
+      - name: Show backend logs (for visibility)
+        if: always()
+        run: |
+          docker logs laundry-app-ci || true
+
+      - name: Stop container
+        if: always()
+        run: |
+          docker rm -f laundry-app-ci || true
