@@ -132,9 +132,12 @@ bash scripts/setup-auto-deploy.sh
 
 This configures a cron job that:
 - Checks for new commits every 5 minutes
+- **Automatically backs up log data** before deployment
 - Automatically pulls changes from GitHub
 - Pulls the latest Docker image from GHCR
 - Restarts containers with zero interaction needed
+- **Restores log data** after restart (prevents data loss)
+- Keeps last 10 backups in `/root/LaundryApp/backups/`
 
 **View auto-deployment logs:**
 ```bash
@@ -144,6 +147,16 @@ tail -f /var/log/laundry-auto-deploy.log
 **Manually trigger deployment:**
 ```bash
 /root/LaundryApp/scripts/auto-deploy.sh
+```
+
+**List available backups:**
+```bash
+ls -lht /root/LaundryApp/backups/
+```
+
+**Restore from a backup:**
+```bash
+bash scripts/restore-backup.sh laundry_log_20251031_143000.jsonl
 ```
 
 **Disable auto-deployment:**

@@ -40,6 +40,24 @@ log "New changes detected, deploying..."
 log "Local: $LOCAL"
 log "Remote: $REMOTE"
 
+# Backup current log data before deployment
+BACKUP_DIR="/root/LaundryApp/backups"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+mkdir -p "$BACKUP_DIR"
+
+log "Backing up laundry log data..."
+if docker exec laundry-app test -f /app/backend/laundry_log.jsonl 2>/dev/null; then
+    docker cp laundry-app:/app/backend/laundry_log.jsonl "$BACKUP_DIR/laundry_log_$TIMESTAMP.jsonl"
+    log "Backup created: $BACKUP_DIR/laundry_log_$TIMESTAMP.jsonl"
+    
+    # Keep only last 10 backups
+    cd "$BACKUP_DIR"
+    ls -t laundry_log_*.jsonl | tail -n +11 | xargs -r rm
+    log "Cleaned up old backups (keeping last 10)"
+else
+    log "No log data to backup"
+fi
+
 # Pull changes
 git pull origin master
 
@@ -51,6 +69,16 @@ docker-compose pull
 log "Restarting containers..."
 docker-compose down
 docker-compose up -d
+
+# Restore log data if it exists in backup
+log "Restoring log data..."
+if [ -f "$BACKUP_DIR/laundry_log_$TIMESTAMP.jsonl" ]; then
+    sleep 5  # Wait for container to be ready
+    docker cp "$BACKUP_DIR/laundry_log_$TIMESTAMP.jsonl" laundry-app:/app/backend/laundry_log.jsonl
+    log "Log data restored successfully"
+else
+    log "No backup to restore"
+fi
 
 # Wait for health check
 log "Waiting for app to be healthy..."
