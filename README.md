@@ -1,6 +1,6 @@
 # Laundry App Analytics
 
-Dockerized laundry analytics app with React frontend and Node.js backend.
+Dockerized laundry analytics app with React frontend and Node.js backend. Monitors laundry machine availability with automated scraping, logging, and analytics.
 
 ## Quick Start (Docker)
 
@@ -14,62 +14,233 @@ Access:
 
 Internal app health (direct): http://localhost:5000/health (if exposed)
 
+## Deployment Workflow
+
+This project uses a CI/CD pipeline for automated builds and deployment to a Proxmox LXC container.
+
+### Overview
+
+1. **Development** → Push code to GitHub
+2. **CI/CD** → GitHub Actions builds Docker image
+3. **Registry** → Image pushed to GitHub Container Registry (GHCR)
+4. **Production** → LXC container pulls and runs image
+
+### Initial Setup
+
+#### 1. GitHub Repository Setup
+
+Created repository: [Adamibus/laundry-app-analytics](https://github.com/Adamibus/laundry-app-analytics)
+
+```bash
+# Initialize git and add remote
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M master
+git remote add origin git@github.com:Adamibus/laundry-app-analytics.git
+git push -u origin master
+```
+
+#### 2. CI/CD Pipeline
+
+GitHub Actions workflow (`.github/workflows/docker-image.yml`) automatically:
+- Triggers on push to `master` branch
+- Builds multi-stage Docker image (Node 20)
+- Pushes to `ghcr.io/adamibus/laundry-app-analytics:latest`
+- No manual authentication needed (uses `GITHUB_TOKEN`)
+
+#### 3. Proxmox LXC Container Configuration
+
+**Container Specs:**
+- OS: Ubuntu 20.04
+- CT ID: 102
+- IP: 192.168.50.183
+- Unprivileged: false (required for Docker)
+
+**Required LXC Config** (edit on Proxmox host):
+```bash
+pct set 102 -features nesting=1,keyctl=1
+```
+
+Edit `/etc/pve/lxc/102.conf`:
+```
+lxc.apparmor.profile: unconfined
+lxc.cgroup.devices.allow: a
+```
+
+Restart container: `pct stop 102 && pct start 102`
+
+#### 4. LXC Container Setup
+
+Install Docker in CT:
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+systemctl enable docker
+systemctl start docker
+```
+
+Install Docker Compose v1 (Ubuntu 20.04):
+```bash
+apt-get install -y docker-compose
+```
+
+Configure SSH for GitHub (if using SSH):
+```bash
+ssh-keygen -t ed25519 -C "laundry-app-ct"
+cat ~/.ssh/id_ed25519.pub  # Add to GitHub account
+```
+
+Configure Git identity:
+```bash
+git config --global user.name "Adamibus"
+git config --global user.email "adinjian@gmail.com"
+```
+
+Clone repository:
+```bash
+cd ~
+git clone git@github.com:Adamibus/laundry-app-analytics.git LaundryApp
+cd LaundryApp
+```
+
+#### 5. Initial Deployment
+
+```bash
+cd ~/LaundryApp
+docker-compose pull  # Pull latest image from GHCR
+docker-compose up -d
+```
+
+Verify deployment:
+```bash
+docker ps  # Check containers running
+docker logs laundry-app  # Check app logs
+curl http://localhost:8090/  # Test HTTP access
+```
+
+### Updating the App
+
+#### Option 1: Automatic Deployment (Recommended)
+
+Set up auto-deployment once on the CT to automatically pull and deploy updates every 5 minutes:
+
+```bash
+cd ~/LaundryApp
+bash scripts/setup-auto-deploy.sh
+```
+
+This configures a cron job that:
+- Checks for new commits every 5 minutes
+- Automatically pulls changes from GitHub
+- Pulls the latest Docker image from GHCR
+- Restarts containers with zero interaction needed
+
+**View auto-deployment logs:**
+```bash
+tail -f /var/log/laundry-auto-deploy.log
+```
+
+**Manually trigger deployment:**
+```bash
+/root/LaundryApp/scripts/auto-deploy.sh
+```
+
+**Disable auto-deployment:**
+```bash
+crontab -e  # Remove the auto-deploy.sh line
+```
+
+#### Option 2: Manual Deployment
+
+Whenever you push code changes to GitHub:
+
+1. **GitHub Actions automatically builds and pushes** new image to GHCR
+
+2. **On the LXC container**, pull and restart:
+```bash
+cd ~/LaundryApp
+git pull origin master  # Update docker-compose.yml and configs
+docker-compose pull     # Pull new image
+docker-compose down
+docker-compose up -d
+```
+
+3. **Verify update**:
+```bash
+docker logs laundry-app  # Check for startup messages
+curl http://localhost:8090/health  # Test health endpoint
+```
+
+### Timezone Configuration
+
+The app runs in **America/New_York** timezone (set via `TZ` environment variable in `docker-compose.yml`).
+
+**If you need to clear old UTC-timestamped data:**
+```bash
+docker exec laundry-app rm /app/backend/laundry_log.jsonl
+docker-compose restart
+```
+
+Wait 5-10 minutes for fresh data to be collected with correct timestamps.
+
+### Environment Variables
+
+Configured in `docker-compose.yml`:
+- `TZ=America/New_York` - Timezone for timestamps
+- `EXTERNAL_HEALTHCHECK=true` - Enable external health checks
+- `NODE_ENV=production` - Production mode
+
 ## HTTPS Setup
 
 The included Caddy reverse proxy provides automatic HTTPS with Let's Encrypt.
 
 ### Prerequisites
 1. Domain pointing to your server (e.g., `laundry.adamdinjian.com` A record → your public IP)
-2. Ports forwarded on router: 8090 → host:8090, 8453 → host:8453
-3. Update `Caddyfile` with your domain
+2. Ports forwarded on router: 
+   - External 80 → 192.168.50.183:8090
+   - External 443 → 192.168.50.183:8453
+3. `Caddyfile` configured with your domain
 
 ### Configuration
 
-Edit `Caddyfile`:
+The `Caddyfile` is already configured:
 ```
-laundry.yourdomain.com {
+laundry.adamdinjian.com {
     reverse_proxy app:5000
 }
 ```
 
-Then:
-```bash
-docker-compose up -d
-```
+Caddy automatically obtains and renews SSL certificates from Let's Encrypt.
 
-Caddy automatically obtains and renews SSL certificates.
+**Access:**
+- Local: http://192.168.50.183:8090/
+- External: https://laundry.adamdinjian.com/ (with port forwarding)
 
 ## Development
 
-### Backend
+### Local Development (without Docker)
+
+Backend:
 ```bash
 cd backend
 npm install
 node server.js
 ```
 
-### Frontend
+Frontend:
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-## Deployment
-
-The app is automatically built and pushed to GitHub Container Registry on every push to master.
-
-### Pull and run from GHCR
+### Testing Docker Build Locally
 
 ```bash
-docker-compose pull
-docker-compose up -d
+docker build -t laundry-app:test .
+docker run -p 5000:5000 -e NODE_ENV=production laundry-app:test
 ```
-
-### Environment Variables
-
-- `EXTERNAL_HEALTHCHECK` - Enable external health checks (default: true)
-- `NODE_ENV` - production or development
 
 ## Architecture
 
