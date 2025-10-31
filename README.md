@@ -272,7 +272,7 @@ docker run -p 5000:5000 -e NODE_ENV=production laundry-app:test
 
 Edit `Caddyfile` and add header block:
 ```
-laundry.adamdinjian.com {
+your-domain.com {
     reverse_proxy app:5000
     
     header {
