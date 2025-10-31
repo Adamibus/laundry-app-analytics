@@ -21,9 +21,18 @@ Thumbs.db
 
 # Env & misc
 .env
+.env.local
+.env.production
 *.zip
 *.tar.gz
 scripts/logs/
+
+# Sensitive data
+*_backup.jsonl
+*.key
+*.pem
+.ssh/
+config/local.json
 
 # Docker
 .docker/

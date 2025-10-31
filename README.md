@@ -52,23 +52,21 @@ GitHub Actions workflow (`.github/workflows/docker-image.yml`) automatically:
 #### 3. Proxmox LXC Container Configuration
 
 **Container Specs:**
-- OS: Ubuntu 20.04
-- CT ID: 102
-- IP: 192.168.50.XXX
+- OS: Ubuntu 20.04 or later
 - Unprivileged: false (required for Docker)
 
 **Required LXC Config** (edit on Proxmox host):
 ```bash
-pct set 102 -features nesting=1,keyctl=1
+pct set <CT_ID> -features nesting=1,keyctl=1
 ```
 
-Edit `/etc/pve/lxc/102.conf`:
+Edit `/etc/pve/lxc/<CT_ID>.conf`:
 ```
 lxc.apparmor.profile: unconfined
 lxc.cgroup.devices.allow: a
 ```
 
-Restart container: `pct stop 102 && pct start 102`
+Restart container: `pct stop <CT_ID> && pct start <CT_ID>`
 
 #### 4. LXC Container Setup
 
@@ -209,10 +207,10 @@ Configured in `docker-compose.yml`:
 The included Caddy reverse proxy provides automatic HTTPS with Let's Encrypt.
 
 ### Prerequisites
-1. Domain pointing to your server (e.g., `your-domain.com` A record → your public IP)
-2. Ports forwarded on router: 
-   - External 80 → Your-LXC-IP:8090
-   - External 443 → Your-LXC-IP:8453
+1. Domain pointing to your server (A record → your public IP)
+2. Router configured to forward ports to your LXC container:
+   - Port 80 (HTTP) → Container port 8090
+   - Port 443 (HTTPS) → Container port 8453
 3. `Caddyfile` configured with your domain
 
 ### Configuration
@@ -227,8 +225,8 @@ your-domain.com {
 Caddy automatically obtains and renews SSL certificates from Let's Encrypt.
 
 **Access:**
-- Local: http://Your-LXC-IP:8090/
-- External: https://your-domain.com/ (with port forwarding)
+- Local: http://localhost:8090/ or http://<container-ip>:8090/
+- External: https://your-domain.com/ (requires router port forwarding)
 
 ## Development
 
