@@ -235,17 +235,14 @@ function App() {
 
 	// Get unique dorms, types, and statuses for filter dropdowns (memoized)
 	const dorms = useMemo(() => {
-		const excludeDormRegex = /river[\s_-]*ridge(\s*\d+)?|winchester(\s*[_-]?\d+)?|rr\d*|winch\w*/i;
-		return ['All dorms', ...Array.from(new Set(machines.map(m => m.dorm).filter(dorm => !excludeDormRegex.test(dorm))))];
+		const uniqueDorms = Array.from(new Set(machines.map(m => m.dorm))).sort();
+		return ['All dorms', ...uniqueDorms];
 	}, [machines]);
 	const types = useMemo(() => ['All', ...Array.from(new Set(machines.map(m => m.type)))], [machines]);
 	const statuses = useMemo(() => ['All', ...Array.from(new Set(machines.map(m => m.status)))], [machines]);
 
-	// Filter machines based on user selection and exclude River Ridge and Winchester (memoized)
-	// Exclude any dorm with names or derivatives like 'river ridge', 'river_ridge', 'river-ridge', 'river ridge 5', 'winchester_12', etc.
-	const excludeDormRegex = /river[\s_-]*ridge(\s*\d+)?|winchester(\s*[_-]?\d+)?|rr\d*|winch\w*/i;
+	// Filter machines based on user selection (memoized)
 	const filteredMachines = useMemo(() => machines.filter(m =>
-		!excludeDormRegex.test(m.dorm) &&
 		(dormFilter === 'All dorms' || m.dorm === dormFilter) &&
 		(typeFilter === 'All' || m.type === typeFilter) &&
 		(statusFilter === 'All' || m.status === statusFilter)
@@ -255,7 +252,6 @@ function App() {
 	const analyticsMachines = useMemo(() => {
 		if (dormFilter === 'All dorms') {
 			return machines.filter(m =>
-				!excludeDormRegex.test(m.dorm) &&
 				(typeFilter === 'All' || m.type === typeFilter) &&
 				(statusFilter === 'All' || m.status === statusFilter)
 			);
