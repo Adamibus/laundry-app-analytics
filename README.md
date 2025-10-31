@@ -10,7 +10,7 @@ docker-compose up -d
 
 Access: 
 - HTTP: http://localhost:8090/ (or http://your-ip:8090/)
-- HTTPS: https://laundry.adamdinjian.com:8453/ (with domain configured)
+- HTTPS: https://your-domain.com:8453/ (with domain configured)
 
 Internal app health (direct): http://localhost:5000/health (if exposed)
 
@@ -29,7 +29,7 @@ This project uses a CI/CD pipeline for automated builds and deployment to a Prox
 
 #### 1. GitHub Repository Setup
 
-Created repository: [Adamibus/laundry-app-analytics](https://github.com/Adamibus/laundry-app-analytics)
+Created repository: [YourUsername/laundry-app-analytics](https://github.com/YourUsername/laundry-app-analytics)
 
 ```bash
 # Initialize git and add remote
@@ -37,7 +37,7 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M master
-git remote add origin git@github.com:Adamibus/laundry-app-analytics.git
+git remote add origin git@github.com:YourUsername/laundry-app-analytics.git
 git push -u origin master
 ```
 
@@ -46,7 +46,7 @@ git push -u origin master
 GitHub Actions workflow (`.github/workflows/docker-image.yml`) automatically:
 - Triggers on push to `master` branch
 - Builds multi-stage Docker image (Node 20)
-- Pushes to `ghcr.io/adamibus/laundry-app-analytics:latest`
+- Pushes to `ghcr.io/yourusername/laundry-app-analytics:latest`
 - No manual authentication needed (uses `GITHUB_TOKEN`)
 
 #### 3. Proxmox LXC Container Configuration
@@ -54,7 +54,7 @@ GitHub Actions workflow (`.github/workflows/docker-image.yml`) automatically:
 **Container Specs:**
 - OS: Ubuntu 20.04
 - CT ID: 102
-- IP: 192.168.50.183
+- IP: 192.168.50.XXX
 - Unprivileged: false (required for Docker)
 
 **Required LXC Config** (edit on Proxmox host):
@@ -93,14 +93,14 @@ cat ~/.ssh/id_ed25519.pub  # Add to GitHub account
 
 Configure Git identity:
 ```bash
-git config --global user.name "Adamibus"
-git config --global user.email "adinjian@gmail.com"
+git config --global user.name "YourUsername"
+git config --global user.email "your-email@example.com"
 ```
 
 Clone repository:
 ```bash
 cd ~
-git clone git@github.com:Adamibus/laundry-app-analytics.git LaundryApp
+git clone git@github.com:YourUsername/laundry-app-analytics.git LaundryApp
 cd LaundryApp
 ```
 
@@ -209,17 +209,17 @@ Configured in `docker-compose.yml`:
 The included Caddy reverse proxy provides automatic HTTPS with Let's Encrypt.
 
 ### Prerequisites
-1. Domain pointing to your server (e.g., `laundry.adamdinjian.com` A record → your public IP)
+1. Domain pointing to your server (e.g., `your-domain.com` A record → your public IP)
 2. Ports forwarded on router: 
-   - External 80 → 192.168.50.183:8090
-   - External 443 → 192.168.50.183:8453
+   - External 80 → Your-LXC-IP:8090
+   - External 443 → Your-LXC-IP:8453
 3. `Caddyfile` configured with your domain
 
 ### Configuration
 
-The `Caddyfile` is already configured:
+Update the `Caddyfile` with your domain:
 ```
-laundry.adamdinjian.com {
+your-domain.com {
     reverse_proxy app:5000
 }
 ```
@@ -227,8 +227,8 @@ laundry.adamdinjian.com {
 Caddy automatically obtains and renews SSL certificates from Let's Encrypt.
 
 **Access:**
-- Local: http://192.168.50.183:8090/
-- External: https://laundry.adamdinjian.com/ (with port forwarding)
+- Local: http://Your-LXC-IP:8090/
+- External: https://your-domain.com/ (with port forwarding)
 
 ## Development
 

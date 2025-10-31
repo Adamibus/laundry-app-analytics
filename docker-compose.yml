@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   app:
-    image: ghcr.io/adamibus/laundry-app-analytics:latest
+    image: ghcr.io/yourusername/laundry-app-analytics:latest
     container_name: laundry-app
     expose:
       - "5000"
