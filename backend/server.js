@@ -17,6 +17,7 @@ function pruneOldLogEntries(logPath) {
 }
 
 const express = require('express');
+const compression = require('compression');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
@@ -26,10 +27,35 @@ const path = require('path');
 
 const app = express();
 app.use(cors());
+// Enable gzip/deflate compression for faster responses
+app.use(compression());
 const PORT = process.env.PORT || 5000;
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, 'build')));
+// Serve static files from the React app with cache headers
+app.use(express.static(path.join(__dirname, 'build'), {
+    maxAge: '7d',
+    etag: true
+}));
+
+// In-memory cache for fast snapshots
+let SNAPSHOT = {
+    machines: null,
+    lastUpdated: null
+};
+
+function readLastLogSnapshot() {
+    const logPath = path.join(__dirname, 'laundry_log.jsonl');
+    if (!fs.existsSync(logPath)) return null;
+    const data = fs.readFileSync(logPath, 'utf-8').trim();
+    if (!data) return null;
+    const lastLine = data.split('\n').filter(Boolean).pop();
+    try {
+        const parsed = JSON.parse(lastLine);
+        return { machines: parsed.machines || [], lastUpdated: parsed.timestamp };
+    } catch {
+        return null;
+    }
+}
 
 // Basic internal health endpoint
 app.get('/health', (req, res) => {
@@ -244,6 +270,9 @@ async function fetchAndLogLaundry() {
             if (err) console.error('Failed to log data:', err);
             else pruneOldLogEntries(logPath);
         });
+        // Update in-memory snapshot for fast reads
+        SNAPSHOT.machines = allMachines;
+        SNAPSHOT.lastUpdated = logEntry.timestamp;
         return allMachines;
     } catch (error) {
         console.error('Failed to fetch dorm links or data:', error);
@@ -284,12 +313,47 @@ app.get('/api/laundry/best-times', (req, res) => {
 });
 
 app.get('/api/laundry', async (req, res) => {
+    // Support cached mode to avoid blocking on live scrape
+    if (req.query.cached === '1') {
+        if (!SNAPSHOT.machines) {
+            const last = readLastLogSnapshot();
+            if (last) {
+                SNAPSHOT.machines = last.machines;
+                SNAPSHOT.lastUpdated = last.lastUpdated;
+            }
+        }
+        // Kick off background refresh if stale > 30 minutes
+        const isStale = SNAPSHOT.lastUpdated ? (Date.now() - new Date(SNAPSHOT.lastUpdated).getTime() > 30 * 60 * 1000) : true;
+        if (isStale) {
+            fetchAndLogLaundry().catch(() => {});
+        }
+        return res.json({ machines: SNAPSHOT.machines || [], lastUpdated: SNAPSHOT.lastUpdated });
+    }
+
+    // Default: live scrape (may be slower)
     const machines = await fetchAndLogLaundry();
     if (machines) {
-        res.json({ machines });
+        res.json({ machines, lastUpdated: new Date().toISOString() });
     } else {
         res.status(500).json({ error: 'Failed to fetch laundry data.' });
     }
+});
+
+// Fast snapshot endpoint that never blocks on live scrape
+app.get('/api/laundry/snapshot', (req, res) => {
+    if (!SNAPSHOT.machines) {
+        const last = readLastLogSnapshot();
+        if (last) {
+            SNAPSHOT.machines = last.machines;
+            SNAPSHOT.lastUpdated = last.lastUpdated;
+        }
+    }
+    // Background refresh if stale > 30 minutes
+    const isStale = SNAPSHOT.lastUpdated ? (Date.now() - new Date(SNAPSHOT.lastUpdated).getTime() > 30 * 60 * 1000) : true;
+    if (isStale) {
+        fetchAndLogLaundry().catch(() => {});
+    }
+    res.json({ machines: SNAPSHOT.machines || [], lastUpdated: SNAPSHOT.lastUpdated });
 });
 
 

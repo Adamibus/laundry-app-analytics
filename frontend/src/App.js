@@ -184,8 +184,8 @@ function App() {
 					console.error('Best times error:', err);
 				});
 			
-			// Fetch current machines
-			fetch('/api/laundry')
+			// Fetch current machines via fast snapshot endpoint
+			fetch('/api/laundry/snapshot')
 				.then((res) => {
 					if (!res.ok) throw new Error('Failed to fetch machine data');
 					return res.json();
@@ -194,7 +194,7 @@ function App() {
 					setMachines(data.machines || []);
 					setLoading(false);
 					setIsRefreshing(false);
-					setLastUpdated(new Date());
+					setLastUpdated(data.lastUpdated ? new Date(data.lastUpdated) : new Date());
 				})
 				.catch((err) => {
 					setError('Unable to connect to server. Please check your connection.');
