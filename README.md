@@ -83,3 +83,60 @@ docker-compose up -d
 - `scripts/stop.sh` - Stop containers
 - `scripts/restart.sh` - Restart stack
 - `scripts/logs.sh` - View logs
+
+## Security Hardening (Optional)
+
+### 1. Add Security Headers to Caddy
+
+Edit `Caddyfile` and add header block:
+```
+laundry.adamdinjian.com {
+    reverse_proxy app:5000
+    
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+        -Server
+    }
+}
+```
+
+### 2. Enable Firewall (on CT as root)
+
+```bash
+apt-get install -y ufw
+ufw allow 8090/tcp comment 'HTTP for Caddy'
+ufw allow 8453/tcp comment 'HTTPS for Caddy'
+ufw allow 22/tcp comment 'SSH'
+ufw enable
+```
+
+### 3. Install Fail2Ban (SSH protection)
+
+```bash
+apt-get install -y fail2ban
+systemctl enable fail2ban
+systemctl start fail2ban
+```
+
+### 4. Enable Automatic Security Updates
+
+```bash
+apt-get install -y unattended-upgrades
+dpkg-reconfigure -plow unattended-upgrades
+```
+
+### 5. Disable SSH Password Auth (keys only)
+
+Edit `/etc/ssh/sshd_config`:
+```
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+```
+
+Then: `systemctl restart sshd`
+
+**Note:** Ensure SSH keys are configured before disabling password auth.
