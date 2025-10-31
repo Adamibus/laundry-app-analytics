@@ -34,6 +34,10 @@ scripts/logs/
 .ssh/
 config/local.json
 
+# Local deployment config (keep sanitized versions in repo)
+docker-compose.override.yml
+Caddyfile.local
+
 # Docker
 .docker/
 docker-data/
