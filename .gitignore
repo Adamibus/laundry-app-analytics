@@ -20,8 +20,13 @@ Thumbs.db
 # Env & misc
 .env
 *.zip
+*.tar.gz
 scripts/logs/
 
 # Docker
 .docker/
 docker-data/
+
+# Windows cruft
+*.ps1
+Thumbs.db
