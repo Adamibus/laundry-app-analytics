@@ -7,9 +7,9 @@ set -e
 echo "Setting up auto-deployment for Laundry App..."
 
 # Create log directory if it doesn't exist
-sudo mkdir -p /var/log
-sudo touch /var/log/laundry-auto-deploy.log
-sudo chmod 666 /var/log/laundry-auto-deploy.log
+mkdir -p /var/log
+touch /var/log/laundry-auto-deploy.log
+chmod 666 /var/log/laundry-auto-deploy.log
 
 # Make auto-deploy script executable
 chmod +x /root/LaundryApp/scripts/auto-deploy.sh
@@ -33,7 +33,9 @@ echo "The CT will now automatically:"
 echo "  1. Check for new commits every 5 minutes"
 echo "  2. Pull changes from GitHub"
 echo "  3. Pull new Docker image from GHCR"
-echo "  4. Restart containers"
+echo "  4. Backup log data before restart"
+echo "  5. Restart containers"
+echo "  6. Restore log data after restart"
 echo ""
 echo "View deployment logs with:"
 echo "  tail -f /var/log/laundry-auto-deploy.log"
