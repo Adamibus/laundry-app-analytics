@@ -167,14 +167,14 @@ function App() {
 	useEffect(() => {
 		function fetchAll() {
 			// Fetch best times
-			fetch('http://localhost:5000/api/laundry/best-times')
+			fetch('/api/laundry/best-times')
 				.then((res) => res.json())
 				.then((data) => {
 					setBestTimes(data.bestTimes || []);
 				})
 				.catch(() => {});
 			// Fetch current machines
-			fetch('http://localhost:5000/api/laundry')
+			fetch('/api/laundry')
 				.then((res) => res.json())
 				.then((data) => {
 					setMachines(data.machines || []);
@@ -185,7 +185,7 @@ function App() {
 					setLoading(false);
 				});
 			// Fetch weekly machine analytics by default
-			fetch('http://localhost:5000/api/laundry/machine-analytics?period=week')
+			fetch('/api/laundry/machine-analytics?period=week')
 				.then((res) => res.json())
 				.then((data) => {
 					setMachineAnalytics(data.machineAnalytics || []);
@@ -205,7 +205,7 @@ function App() {
 				params.push(`status=${encodeURIComponent(statusFilter.trim().toLowerCase())}`);
 			}
 			const query = params.length ? `?${params.join('&')}` : '';
-			fetch(`http://localhost:5000/api/laundry/weekly-times${query}`)
+			fetch(`/api/laundry/weekly-times${query}`)
 				.then((res) => res.json())
 				.then((data) => {
 					setWeekStats(data.weekStats || {});
