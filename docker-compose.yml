@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   app:
-    build: .
+    image: ghcr.io/adamibus/laundry-app-analytics:latest
     container_name: laundry-app
     ports:
       - "5000:5000"
