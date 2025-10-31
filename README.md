@@ -8,9 +8,36 @@ Dockerized laundry analytics app with React frontend and Node.js backend.
 docker-compose up -d
 ```
 
-Access: http://localhost:5000/
+Access: 
+- HTTP: http://localhost:8090/ (or http://your-ip:8090/)
+- HTTPS: https://laundry.adamdinjian.com:8453/ (with domain configured)
 
-Health: http://localhost:5000/health
+Internal app health (direct): http://localhost:5000/health (if exposed)
+
+## HTTPS Setup
+
+The included Caddy reverse proxy provides automatic HTTPS with Let's Encrypt.
+
+### Prerequisites
+1. Domain pointing to your server (e.g., `laundry.adamdinjian.com` A record → your public IP)
+2. Ports forwarded on router: 8090 → host:8090, 8453 → host:8453
+3. Update `Caddyfile` with your domain
+
+### Configuration
+
+Edit `Caddyfile`:
+```
+laundry.yourdomain.com {
+    reverse_proxy app:5000
+}
+```
+
+Then:
+```bash
+docker-compose up -d
+```
+
+Caddy automatically obtains and renews SSL certificates.
 
 ## Development
 

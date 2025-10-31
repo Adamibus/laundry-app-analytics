@@ -3,8 +3,8 @@ services:
   app:
     image: ghcr.io/adamibus/laundry-app-analytics:latest
     container_name: laundry-app
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     environment:
       - NODE_ENV=production
       - EXTERNAL_HEALTHCHECK=true
@@ -16,3 +16,21 @@ services:
       timeout: 10s
       retries: 3
       # start_period may not be supported by older compose versions
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: laundry-caddy
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+      - "8453:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

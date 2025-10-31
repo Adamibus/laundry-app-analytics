@@ -1,0 +1,3 @@
+laundry.adamdinjian.com {
+    reverse_proxy app:5000
+}
