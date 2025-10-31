@@ -159,6 +159,8 @@ function App() {
 	const [error, setError] = useState(null);
 	const [machineAnalytics, setMachineAnalytics] = useState([]);
 	const [weekStats, setWeekStats] = useState({});
+	const [lastUpdated, setLastUpdated] = useState(null);
+	const [isRefreshing, setIsRefreshing] = useState(false);
 
 	const [dormFilter, setDormFilter] = useState(() => localStorage.getItem('favoriteDorm') || 'All dorms');
 	const [typeFilter, setTypeFilter] = useState('All');
@@ -166,31 +168,54 @@ function App() {
 
 	useEffect(() => {
 		function fetchAll() {
+			setIsRefreshing(true);
+			setError(null);
+			
 			// Fetch best times
 			fetch('/api/laundry/best-times')
-				.then((res) => res.json())
+				.then((res) => {
+					if (!res.ok) throw new Error('Failed to fetch best times');
+					return res.json();
+				})
 				.then((data) => {
 					setBestTimes(data.bestTimes || []);
 				})
-				.catch(() => {});
+				.catch((err) => {
+					console.error('Best times error:', err);
+				});
+			
 			// Fetch current machines
 			fetch('/api/laundry')
-				.then((res) => res.json())
+				.then((res) => {
+					if (!res.ok) throw new Error('Failed to fetch machine data');
+					return res.json();
+				})
 				.then((data) => {
 					setMachines(data.machines || []);
 					setLoading(false);
+					setIsRefreshing(false);
+					setLastUpdated(new Date());
 				})
 				.catch((err) => {
-					setError('Failed to fetch current machine data');
+					setError('Unable to connect to server. Please check your connection.');
 					setLoading(false);
+					setIsRefreshing(false);
+					console.error('Machine data error:', err);
 				});
+			
 			// Fetch weekly machine analytics by default
 			fetch('/api/laundry/machine-analytics?period=week')
-				.then((res) => res.json())
+				.then((res) => {
+					if (!res.ok) throw new Error('Failed to fetch analytics');
+					return res.json();
+				})
 				.then((data) => {
 					setMachineAnalytics(data.machineAnalytics || []);
 				})
-				.catch(() => {});
+				.catch((err) => {
+					console.error('Analytics error:', err);
+				});
+			
 			// Fetch weekly time-slot stats for heatmap (per dorm)
 			// Build query params for dorm, type, and status
 			const params = [];
@@ -206,11 +231,16 @@ function App() {
 			}
 			const query = params.length ? `?${params.join('&')}` : '';
 			fetch(`/api/laundry/weekly-times${query}`)
-				.then((res) => res.json())
+				.then((res) => {
+					if (!res.ok) throw new Error('Failed to fetch weekly stats');
+					return res.json();
+				})
 				.then((data) => {
 					setWeekStats(data.weekStats || {});
 				})
-				.catch(() => {});
+				.catch((err) => {
+					console.error('Weekly stats error:', err);
+				});
 		}
 		fetchAll();
 		const interval = setInterval(fetchAll, 5 * 60 * 1000); // 5 minutes
@@ -264,16 +294,41 @@ function App() {
 		/available/i.test(m.status)
 	).length, [analyticsMachines]);
 
+	const formatLastUpdated = () => {
+		if (!lastUpdated) return 'Never';
+		const now = new Date();
+		const diff = Math.floor((now - lastUpdated) / 1000);
+		if (diff < 60) return 'Just now';
+		if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+		return lastUpdated.toLocaleTimeString();
+	};
+
 		return (
 			<div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: 'Arial', padding: '2rem 0' }}>
 				<div style={{ ...cardStyle, marginBottom: 32 }}>
 					<h1 style={{ margin: 0, fontSize: 32, color: '#1976d2', letterSpacing: 1 }}>Conn College Laundry Analytics</h1>
-					<div style={{ color: '#607d8b', fontSize: 16, marginTop: 8 }}>Find the best time to do your laundry in your dorm.</div>
+					<div style={{ color: '#607d8b', fontSize: 16, marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+						<span>Find the best time to do your laundry in your dorm.</span>
+						<span style={{ fontSize: 14, color: isRefreshing ? '#2196f3' : '#9e9e9e' }}>
+							{isRefreshing ? '🔄 Refreshing...' : `Last updated: ${formatLastUpdated()}`}
+						</span>
+					</div>
 				</div>
 
 				<div style={cardStyle}>
-					{loading && <p>Loading...</p>}
-					{error && <p style={{ color: 'red' }}>{error}</p>}
+					{loading && (
+						<div style={{ textAlign: 'center', padding: '3rem' }}>
+							<div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
+							<div style={{ color: '#607d8b', fontSize: 18 }}>Loading laundry data...</div>
+						</div>
+					)}
+					{error && (
+						<div style={{ background: '#ffebee', border: '1px solid #ef5350', borderRadius: 8, padding: '1rem', marginBottom: '1rem', color: '#c62828' }}>
+							<strong>⚠️ Error:</strong> {error}
+						</div>
+					)}
+					{!loading && !error && (
+					<>
 					<div style={{ ...panelStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 						<span style={{ fontWeight: 600, fontSize: 18 }}>Current total available machines:</span>
 						<span style={{ fontWeight: 700, fontSize: 22, color: '#4caf50' }}>{currentAvailableCount}</span>
@@ -335,9 +390,12 @@ function App() {
 									    </div>
 									  </div>
 									)}
+					</>
+					)}
 				</div>
 
 						{/* Weekly Heatmap: Show for all dorms and specific dorms */}
+						{!loading && !error && (
 						<div style={cardStyle}>
 													<h2 style={{ marginTop: 0, fontSize: 22, color: '#1976d2' }}>Weekly Machine Availability Heatmap</h2>
 													<div style={{ fontSize: 17, color: '#607d8b', marginBottom: 8 }}>
@@ -345,6 +403,7 @@ function App() {
 													</div>
 							<WeeklyHeatmap weekStats={weekStats} />
 						</div>
+						)}
 			</div>
 		);
 }
